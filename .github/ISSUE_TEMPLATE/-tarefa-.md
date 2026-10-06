@@ -2,7 +2,7 @@
 name: "[Tarefa]"
 about: Algo que precisa ser feito
 title: ''
-labels: ''
+labels: tarefa
 assignees: ''
 type: Feature
 

@@ -2,7 +2,7 @@
 name: "[Problema]"
 about: Algo quebrou, não funciona ou está estranho (hardware ou software)
 title: ''
-labels: ''
+labels: problema
 assignees: ''
 type: Bug
 

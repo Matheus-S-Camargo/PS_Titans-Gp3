@@ -2,7 +2,7 @@
 name: "[Teste]"
 about: Registro rápido de um teste feito no robô, no código ou na comunicação
 title: ''
-labels: ''
+labels: tarefa
 assignees: ''
 type: Task
 

@@ -2,7 +2,7 @@
 name: "[Decisão]"
 about: Escolha que o grupo precisa fazer (protocolo, motor, ponte H, estrutura, etc.)
 title: ''
-labels: ''
+labels: decisão
 assignees: ''
 type: Task
 
