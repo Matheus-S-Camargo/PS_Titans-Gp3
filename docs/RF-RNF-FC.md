@@ -1,6 +1,6 @@
-# Requisitos Funcionais — Firmware e Comunicação
+# Requisitos do Sistema — Firmware e Comunicação
 
-Este documento reúne os requisitos funcionais de Firmware e Comunicação do Balloone. A organização segue o uso do robô: inicialização, conexão, liberação do controle, movimentação e tratamento de falhas.
+Este documento reúne os requisitos funcionais e não funcionais de Firmware e Comunicação do Balloone. A organização segue o uso do robô: inicialização, conexão, liberação do controle, movimentação e tratamento de falhas.
 
 Esta é a primeira versão dos requisitos. Os parâmetros e pontos de integração ainda pendentes estão registrados ao final.
 
@@ -28,6 +28,24 @@ Esta é a primeira versão dos requisitos. Os parâmetros e pontos de integraç�
 | RF-FC-18 | Tratar mensagens inválidas | Se receber uma mensagem de controle inválida do controlador ativo, o firmware deve descartá-la e acionar a frenagem dos motores, sem renovar o tempo limite de comunicação. O próximo comando válido poderá movimentar o robô novamente, desde que a sessão continue ativa e não haja um bloqueio que exija soltar os controles e pressioná-los de novo. |
 | RF-FC-19 | Parar e encerrar o controle após perda de comunicação | Ao detectar a desconexão do controlador ativo ou atingir o tempo limite definido no RF-FC-10, o firmware deve acionar a frenagem, bloquear o movimento e encerrar a sessão de controle. O controle deve ficar disponível para uma nova conexão, que deverá seguir o procedimento do RF-FC-06 antes de movimentar o robô. |
 | RF-FC-20 | Desconsiderar comandos anteriores à retomada | Depois que uma sessão de controle for encerrada, o firmware deve desconsiderar as mensagens pertencentes a ela. Comandos anteriores à interrupção ou gerados durante a queda de comunicação não devem ser reaproveitados para movimentar o robô na nova sessão. A retomada deve depender da confirmação de controles soltos e de um novo acionamento, conforme o RF-FC-06. |
+
+## Requisitos Não Funcionais
+
+| Código | Nome | Descrição |
+| --- | --- | --- |
+| RNF-FC-01 | Comportamento à prova de falhas | O firmware deve garantir que o estado de falha (perda de conexão, mensagem inválida ou reinicialização) resulte sempre na imobilização imediata do robô. |
+| RNF-FC-02 | Prevenção de partida acidental | O sistema deve possuir um mecanismo de intertravamento lógico (zero-state lock) que impeça o acionamento mecânico caso o controle já esteja sendo pressionado no momento da conexão. |
+| RNF-FC-03 | Tempo de timeout restrito | O intervalo de tempo para considerar a perda de comunicação deve ser rigorosamente baixo (ex: inferior a 500 milissegundos) para garantir que o robô não ande descontroladamente em caso de queda de sinal. |
+| RNF-FC-04 | Isolamento de tráfego | A latência das mensagens de controle via WebSocket não deve ser impactada pelo tráfego de vídeo. O firmware precisa garantir prioridade ou separação de banda para os pacotes de controle. |
+| RNF-FC-05 | Tolerância a falhas de entrada | O firmware não deve travar (crash), reiniciar ou sofrer vazamento de memória ao processar pacotes de dados corrompidos, inválidos ou maliciosos, garantindo a continuidade do processo de frenagem. |
+| RNF-FC-06 | Gestão de sessão estável | O controle de exclusividade do controlador deve ser atômico, impedindo condições de corrida (race conditions) caso múltiplos dispositivos tentem se conectar ao mesmo tempo. |
+| RNF-FC-07 | Autossuficiência de rede | O robô deve atuar como um Access Point (Ponto de Acesso) autônomo, não dependendo de roteadores externos, infraestrutura de terceiros ou conexão com a internet para operar. |
+| RNF-FC-08 | Feedback visual imediato | O atraso entre a aceitação ou encerramento de uma sessão de controle e a resposta do LED indicador deve ser imperceptível ao usuário humano, garantindo clareza do estado atual do robô. |
+| RNF-FC-09 | Desempenho e sincronização | A interface deve manter uma taxa de atualização contínua (ex: envio de pacotes a cada 100ms) para sinalizar que a conexão está viva, mesmo quando os controles estão soltos. |
+| RNF-FC-10 | Resiliência e gerenciamento de buffer | O sistema deve descartar imediatamente pacotes de comandos antigos represados no buffer após uma latência ou queda de rede, processando exclusivamente o comando mais recente. |
+| RNF-FC-11 | Segurança de hardware | O circuito dos motores deve garantir fisicamente (via resistores de pull-down ou pull-up) que os motores permaneçam imóveis nos milissegundos iniciais de boot do microcontrolador, quando os pinos ainda estão em estado flutuante. |
+| RNF-FC-12 | Física da frenagem | A ponte H deve atuar ativamente no freio motor (curto-circuitando as bobinas), e não apenas cortando a energia, para vencer a inércia mecânica e garantir o tempo e distância de frenagem. |
+| RNF-FC-13 | Configurabilidade | O código deve ser implementado de forma que os parâmetros de velocidade, potência (PWM) e redução de giro não estejam engessados (hardcoded) nas funções lógicas, devendo ser variáveis globais ou macros facilmente alteráveis para calibragem em campo. |
 
 ## Definições e pontos de integração
 
@@ -64,3 +82,4 @@ Eletrônica deve garantir que o LED de conexão e o de alimentação tenham core
 Wi-Fi próprio, WebSocket, curvas, frenagem e exclusividade do controlador são decisões da equipe para este projeto.
 
 A transmissão de vídeo pertence ao outro subgrupo, mas o controle e o vídeo devem ser integrados e testados funcionando ao mesmo tempo na ESP32-CAM.
+
