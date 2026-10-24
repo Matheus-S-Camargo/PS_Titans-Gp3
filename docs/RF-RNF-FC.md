@@ -1,85 +1,141 @@
 # Requisitos do Sistema — Firmware e Comunicação
 
-Este documento reúne os requisitos funcionais e não funcionais de Firmware e Comunicação do Balloone. A organização segue o uso do robô: inicialização, conexão, liberação do controle, movimentação e tratamento de falhas.
+**Versão: 0.1**
 
-Esta é a primeira versão dos requisitos. Os parâmetros e pontos de integração ainda pendentes estão registrados ao final.
+Este documento reúne os requisitos funcionais e não funcionais da parte de Firmware e Comunicação. Os valores de tempo são propostas iniciais para implementação e testes. Os pontos que dependem de outros subgrupos estão identificados nas seções de parâmetros e acordos de integração.
 
 ## Requisitos funcionais
 
 | Código | Nome | Descrição |
 | --- | --- | --- |
-| RF-FC-01 | Inicializar sem movimento | Ao ligar ou reiniciar a placa, o firmware deve iniciar o controle dos motores no estado de parada e manter o movimento bloqueado. A movimentação só poderá ser liberada pelo procedimento do RF-FC-06. Um botão mantido pressionado durante a inicialização ou reinicialização não deve fazer o robô começar a andar automaticamente. |
+| RF-FC-01 | Inicializar sem movimento | Ao ligar ou reiniciar a placa, o firmware deve iniciar o controle dos motores no estado de parada e manter o movimento bloqueado. A liberação deve seguir o RF-FC-06. Um botão mantido pressionado durante a reinicialização não deve provocar a retomada automática do movimento. |
 | RF-FC-02 | Disponibilizar rede Wi-Fi | Ao iniciar, o firmware deve criar automaticamente uma rede Wi-Fi própria para conectar o dispositivo de controle ao robô. Essa conexão deve funcionar sem internet e sem depender de outra rede. |
-| RF-FC-03 | Estabelecer comunicação de controle | O firmware deve disponibilizar uma conexão por WebSocket para receber mensagens de controle e enviar os avisos previstos nestes requisitos. As conexões destinadas ao controle devem ser diferenciadas das conexões usadas apenas para transmissão de vídeo. |
-| RF-FC-04 | Garantir exclusividade do controlador | O firmware deve conceder o controle à primeira conexão de controle aceita e manter apenas um controlador ativo por vez. Conectar um dispositivo ao Wi-Fi ou acessar o vídeo não deve ser suficiente para assumir o controle. Enquanto houver um controlador ativo, as mensagens de outras conexões não devem alterar o acionamento dos motores, renovar o tempo limite desse controlador ou desbloquear movimentos. |
+| RF-FC-03 | Estabelecer comunicação de controle | O firmware deve permitir a troca de mensagens de controle e de avisos por WebSocket. As conexões destinadas ao controle devem ser diferenciadas das conexões utilizadas apenas para vídeo. |
+| RF-FC-04 | Garantir exclusividade do controlador | O firmware deve conceder o controle à primeira conexão de controle aceita e manter apenas um controlador ativo por vez, inclusive quando houver tentativas simultâneas. Conectar um dispositivo ao Wi-Fi ou acessar o vídeo não deve ser suficiente para assumir o controle. Enquanto houver um controlador ativo, mensagens de outras conexões não devem alterar o acionamento dos motores, renovar o tempo limite desse controlador ou desbloquear movimentos. |
 | RF-FC-05 | Informar indisponibilidade do controle | Se outra conexão tentar assumir o controle enquanto já houver um controlador ativo, o firmware deve avisar à conexão solicitante que ela não é o controlador no momento, pois o controle está ocupado. |
-| RF-FC-06 | Liberar o movimento em uma nova sessão | Sempre que uma nova sessão de controle for aceita, o firmware deve manter o movimento bloqueado até receber do controlador ativo uma mensagem válida confirmando que todos os controles de movimento estão soltos. Depois dessa confirmação, somente um comando válido decorrente de um novo acionamento poderá iniciar a movimentação. Essa regra também deve valer quando o mesmo dispositivo se reconectar. |
+| RF-FC-06 | Liberar o movimento em uma nova sessão | Ao aceitar uma nova sessão de controle, o firmware deve manter o movimento bloqueado até receber do controlador ativo uma mensagem válida confirmando que todos os controles de movimento estão soltos. Depois dessa confirmação, um comando válido decorrente de um novo acionamento poderá movimentar o robô. Essa regra também deve valer quando o mesmo dispositivo se reconectar. |
 | RF-FC-07 | Informar bloqueio de movimento | Quando o movimento estiver bloqueado aguardando que os controles sejam soltos, o firmware deve informar essa condição ao controlador ativo, caso haja comunicação disponível. A mensagem deve indicar que é necessário soltar todos os controles de movimento antes de pressioná-los novamente. |
-| RF-FC-08 | Indicar conexão com o controlador | O firmware deve manter o LED de conexão aceso enquanto houver uma sessão de controle ativa e apagado quando não houver. Se a sessão continuar ativa, mas o movimento estiver bloqueado aguardando que os controles sejam soltos, o LED deve permanecer aceso. Ao encerrar a sessão, o firmware deve apagar o LED. |
-| RF-FC-09 | Validar mensagens de controle | Antes de usar uma mensagem de controle, o firmware deve verificar se ela pertence à sessão do controlador ativo, segue o formato combinado entre os subgrupos, contém as informações obrigatórias e usa valores permitidos. Mensagens da sessão ativa que não atendam ao formato, aos campos obrigatórios ou aos valores permitidos devem ser tratadas conforme o RF-FC-18. Mensagens de outras conexões ou de sessões encerradas não devem interferir no controle do robô. |
-| RF-FC-10 | Monitorar a continuidade da comunicação | O firmware deve iniciar a contagem do tempo limite quando uma sessão de controle for aceita. A contagem deve ser reiniciada a cada mensagem válida de controle recebida do controlador ativo, inclusive quando ela indicar parada, todos os controles soltos ou uma combinação de direções opostas. Mensagens inválidas, mensagens de outras conexões e tráfego destinado apenas ao vídeo não devem renovar esse tempo. Ao atingir o limite definido, o firmware deve executar o procedimento do RF-FC-19. |
+| RF-FC-08 | Indicar conexão com o controlador | O firmware deve manter o LED de conexão aceso enquanto houver um controlador ativo e apagado quando não houver. O LED deve apagar após a desconexão ou o encerramento da sessão por tempo limite. Se a sessão continuar ativa, mas o movimento estiver bloqueado aguardando que os controles sejam soltos, o LED deve permanecer aceso. |
+| RF-FC-09 | Validar mensagens de controle | O firmware deve verificar se a mensagem pertence à sessão de controle ativa, segue o formato combinado entre os subgrupos, contém as informações obrigatórias e usa valores permitidos. Mensagens inválidas do controlador ativo devem ser tratadas conforme o RF-FC-18. Mensagens de outras conexões ou de sessões encerradas não devem interferir no controle, conforme os RF-FC-04 e RF-FC-20. |
+| RF-FC-10 | Monitorar a continuidade da comunicação | O firmware deve iniciar a contagem do tempo limite ao aceitar uma sessão de controle e renová-la a cada mensagem válida de controle recebida do controlador ativo. Isso inclui mensagens de parada, de controles soltos e de direções opostas simultâneas. Mensagens inválidas, mensagens de outras conexões e tráfego de vídeo não devem renovar essa contagem. Ao atingir o limite definido no RNF-FC-02, o firmware deve executar o procedimento do RF-FC-19. |
 | RF-FC-11 | Movimentar para frente | Quando receber do controlador ativo um comando válido apenas para frente, o firmware deve acionar os motores para que o robô avance, desde que o movimento esteja desbloqueado. |
 | RF-FC-12 | Movimentar para trás | Quando receber do controlador ativo um comando válido apenas para trás, o firmware deve acionar os motores para que o robô recue, desde que o movimento esteja desbloqueado. |
 | RF-FC-13 | Girar para a esquerda | Quando receber do controlador ativo um comando válido apenas para a esquerda, o firmware deve acionar os motores para que o robô gire à esquerda no próprio eixo, desde que o movimento esteja desbloqueado. |
 | RF-FC-14 | Girar para a direita | Quando receber do controlador ativo um comando válido apenas para a direita, o firmware deve acionar os motores para que o robô gire à direita no próprio eixo, desde que o movimento esteja desbloqueado. |
-| RF-FC-15 | Combinar deslocamento e giro | Quando receber do controlador ativo um comando válido que indique exatamente uma direção de deslocamento, frente ou trás, e exatamente uma direção de giro, esquerda ou direita, sem direções opostas simultâneas, o firmware deve fazer o robô executar uma curva, desde que o movimento esteja desbloqueado. Ao avançar, a frente do robô deve seguir para o lado solicitado; ao recuar, a traseira deve seguir para esse lado. Direita e esquerda devem ser consideradas em relação ao próprio robô. O firmware deve usar um parâmetro de acionamento para o giro nas curvas menor que o utilizado no giro isolado. Os valores desse parâmetro devem ser definidos e ajustados nos testes. |
-| RF-FC-16 | Atualizar o movimento conforme os controles pressionados | Durante o controle normal, o firmware deve interpretar cada atualização válida dos controles enviada pelo controlador ativo. Se o movimento estiver desbloqueado, deve executar o deslocamento, o giro ou a curva correspondente aos controles que permanecerem pressionados. Quando restar apenas esquerda ou direita, deve usar o acionamento definido para o giro isolado. As curvas devem seguir o RF-FC-15. Se todos os controles de movimento forem soltos ou houver direções opostas pressionadas, deve acionar a frenagem conforme o RF-FC-17, mesmo que o movimento esteja bloqueado. |
-| RF-FC-17 | Executar frenagem por comando | O firmware deve acionar a frenagem dos motores de locomoção quando receber do controlador ativo uma mensagem válida que indique parada, todos os controles de movimento soltos, frente e trás simultaneamente ou esquerda e direita simultaneamente. A frenagem deve ter prioridade sobre os demais movimentos solicitados na mesma mensagem. Direções opostas pressionadas devem ser tratadas como uma combinação válida de frenagem, mas não devem contar como controles soltos para liberar o movimento pelo RF-FC-06. Um comando de parada, por si só, também não substitui a confirmação de que todos os controles estão soltos. |
-| RF-FC-18 | Tratar mensagens inválidas | Se receber uma mensagem de controle inválida do controlador ativo, o firmware deve descartá-la e acionar a frenagem dos motores, sem renovar o tempo limite de comunicação. O próximo comando válido poderá movimentar o robô novamente, desde que a sessão continue ativa e não haja um bloqueio que exija soltar os controles e pressioná-los de novo. |
-| RF-FC-19 | Parar e encerrar o controle após perda de comunicação | Ao detectar a desconexão do controlador ativo ou atingir o tempo limite definido no RF-FC-10, o firmware deve acionar a frenagem, bloquear o movimento e encerrar a sessão de controle. O controle deve ficar disponível para uma nova conexão, que deverá seguir o procedimento do RF-FC-06 antes de movimentar o robô. |
-| RF-FC-20 | Desconsiderar comandos anteriores à retomada | Depois que uma sessão de controle for encerrada, o firmware deve desconsiderar as mensagens pertencentes a ela. Comandos anteriores à interrupção ou gerados durante a queda de comunicação não devem ser reaproveitados para movimentar o robô na nova sessão. A retomada deve depender da confirmação de controles soltos e de um novo acionamento, conforme o RF-FC-06. |
+| RF-FC-15 | Combinar deslocamento e giro | Quando o controlador ativo enviar um comando válido que combine frente ou trás com esquerda ou direita, o firmware deve comandar uma curva, desde que o movimento esteja desbloqueado. A combinação deve conter apenas uma direção de deslocamento e uma de giro. Ao avançar, a frente do robô deve seguir para o lado solicitado; ao recuar, a traseira deve seguir para esse lado. Direita e esquerda devem ser consideradas em relação ao próprio robô. Nas curvas, o acionamento destinado ao giro deve ser reduzido em relação ao giro isolado, conforme parâmetro definido pela equipe e ajustado nos testes. |
+| RF-FC-16 | Atualizar o movimento conforme os controles pressionados | O firmware deve ajustar o movimento a cada atualização válida dos controles enviada pelo controlador ativo. Com o movimento desbloqueado, se ficar pressionado apenas frente ou trás, deve executar esse deslocamento; se ficar apenas esquerda ou direita, deve girar no próprio eixo com o acionamento definido para o giro isolado. As combinações de deslocamento e giro devem seguir o RF-FC-15. Se todos os controles de movimento forem soltos ou houver direções opostas simultâneas, deve acionar a frenagem conforme o RF-FC-17, mesmo que o movimento esteja bloqueado. |
+| RF-FC-17 | Executar a frenagem | O firmware deve acionar a frenagem dos motores ao receber do controlador ativo uma mensagem válida de parada, de todos os controles de movimento soltos ou de direções opostas simultâneas: frente e trás, ou esquerda e direita. A frenagem deve prevalecer sobre os demais controles presentes na mesma mensagem, qualquer que seja o movimento em execução. Direções opostas devem renovar o tempo limite de comunicação, mas não devem contar como controles soltos para desbloquear o movimento. Um comando de parada, por si só, também não deve ser interpretado como confirmação de que todos os controles foram soltos. |
+| RF-FC-18 | Tratar mensagens inválidas | Se receber uma mensagem de controle inválida do controlador ativo, o firmware deve descartá-la e acionar a frenagem dos motores, sem renovar o tempo limite de recebimento de comandos válidos. O próximo comando válido poderá movimentar o robô novamente, desde que a sessão continue ativa e não haja um bloqueio que exija soltar os controles e pressioná-los de novo. Mensagens de outras conexões não devem provocar essa frenagem, conforme o RF-FC-04. |
+| RF-FC-19 | Encerrar e disponibilizar novamente o controle | Quando detectar que o controlador ativo se desconectou ou quando atingir o tempo limite sem receber mensagens válidas dele, o firmware deve acionar a frenagem, bloquear o movimento e encerrar a sessão de controle. O controle deve ficar disponível para uma nova conexão. A liberação do movimento na nova sessão deve seguir o RF-FC-06. |
+| RF-FC-20 | Desconsiderar comandos de sessões encerradas | O firmware deve desconsiderar mensagens pertencentes a sessões de controle encerradas. Comandos anteriores à interrupção ou gerados durante ela não devem ser reaproveitados para movimentar o robô em uma nova sessão. A retomada deve exigir a confirmação de controles soltos e um novo acionamento, conforme o RF-FC-06. |
 
-## Requisitos Não Funcionais
+## Requisitos não funcionais
 
-| Código | Nome | Descrição |
-| --- | --- | --- |
-| RNF-FC-01 | Comportamento à prova de falhas | O firmware deve garantir que o estado de falha (perda de conexão, mensagem inválida ou reinicialização) resulte sempre na imobilização imediata do robô. |
-| RNF-FC-02 | Prevenção de partida acidental | O sistema deve possuir um mecanismo de intertravamento lógico (zero-state lock) que impeça o acionamento mecânico caso o controle já esteja sendo pressionado no momento da conexão. |
-| RNF-FC-03 | Tempo de timeout restrito | O intervalo de tempo para considerar a perda de comunicação deve ser rigorosamente baixo (ex: inferior a 500 milissegundos) para garantir que o robô não ande descontroladamente em caso de queda de sinal. |
-| RNF-FC-04 | Isolamento de tráfego | A latência das mensagens de controle via WebSocket não deve ser impactada pelo tráfego de vídeo. O firmware precisa garantir prioridade ou separação de banda para os pacotes de controle. |
-| RNF-FC-05 | Tolerância a falhas de entrada | O firmware não deve travar (crash), reiniciar ou sofrer vazamento de memória ao processar pacotes de dados corrompidos, inválidos ou maliciosos, garantindo a continuidade do processo de frenagem. |
-| RNF-FC-06 | Gestão de sessão estável | O controle de exclusividade do controlador deve ser atômico, impedindo condições de corrida (race conditions) caso múltiplos dispositivos tentem se conectar ao mesmo tempo. |
-| RNF-FC-07 | Autossuficiência de rede | O robô deve atuar como um Access Point (Ponto de Acesso) autônomo, não dependendo de roteadores externos, infraestrutura de terceiros ou conexão com a internet para operar. |
-| RNF-FC-08 | Feedback visual imediato | O atraso entre a aceitação ou encerramento de uma sessão de controle e a resposta do LED indicador deve ser imperceptível ao usuário humano, garantindo clareza do estado atual do robô. |
-| RNF-FC-09 | Desempenho e sincronização | A interface deve manter uma taxa de atualização contínua (ex: envio de pacotes a cada 100ms) para sinalizar que a conexão está viva, mesmo quando os controles estão soltos. |
-| RNF-FC-10 | Resiliência e gerenciamento de buffer | O sistema deve descartar imediatamente pacotes de comandos antigos represados no buffer após uma latência ou queda de rede, processando exclusivamente o comando mais recente. |
-| RNF-FC-11 | Segurança de hardware | O circuito dos motores deve garantir fisicamente (via resistores de pull-down ou pull-up) que os motores permaneçam imóveis nos milissegundos iniciais de boot do microcontrolador, quando os pinos ainda estão em estado flutuante. |
-| RNF-FC-12 | Física da frenagem | A ponte H deve atuar ativamente no freio motor (curto-circuitando as bobinas), e não apenas cortando a energia, para vencer a inércia mecânica e garantir o tempo e distância de frenagem. |
-| RNF-FC-13 | Configurabilidade | O código deve ser implementado de forma que os parâmetros de velocidade, potência (PWM) e redução de giro não estejam engessados (hardcoded) nas funções lógicas, devendo ser variáveis globais ou macros facilmente alteráveis para calibragem em campo. |
+| Código | Nome | Categoria | Descrição |
+| --- | --- | --- | --- |
+| RNF-FC-01 | Tempo de resposta à parada por falha | Desempenho | Ao identificar uma mensagem inválida do controlador ativo ou detectar sua desconexão, o firmware deve atualizar as saídas para comandar a frenagem dentro do prazo definido em PAR-FC-03. No caso de timeout, esse prazo deve ser contado a partir do vencimento do limite, incluindo o tempo necessário para reconhecer esse vencimento. O prazo termina no comando elétrico de frenagem, não na parada física do robô. |
+| RNF-FC-02 | Tempo limite sem comunicação | Desempenho | O firmware deve adotar o tempo limite definido em PAR-FC-02 para monitorar a ausência de mensagens válidas do controlador ativo, seguindo as regras de início e renovação da contagem do RF-FC-10. Ao atingir esse limite, deve executar o procedimento do RF-FC-19, respeitando o prazo de reação do RNF-FC-01. |
+| RNF-FC-03 | Tempo de resposta com vídeo ativo | Desempenho | Com a transmissão de vídeo ativa, o tempo entre o envio de uma mensagem válida de controle pela interface e a atualização das saídas dos motores deve respeitar o limite definido em PAR-FC-04, nas condições de operação acordadas para os testes. O requisito se aplica aos comandos do controlador ativo cuja execução esteja permitida pelas regras dos RFs, incluindo a parada por comando. |
+| RNF-FC-04 | Tolerância a mensagens inválidas | Confiabilidade | O firmware deve manter seu funcionamento ao receber mensagens de controle malformadas, incompletas, com valores não permitidos ou acima do tamanho máximo acordado para as mensagens. Essas entradas não devem causar travamentos ou reinicializações, nem impedir o tratamento e a frenagem previstos no RF-FC-18 para mensagens do controlador ativo. Mensagens de outras conexões devem respeitar a regra de não interferência do RF-FC-04. |
+| RNF-FC-05 | Tempo de atualização do LED | Desempenho | O firmware deve atualizar o acionamento do LED de conexão dentro do prazo definido em PAR-FC-05 após aceitar ou encerrar uma sessão de controle, conforme o RF-FC-08. A atualização do LED não deve atrasar o comando de frenagem. |
+| RNF-FC-06 | Facilidade de ajuste dos motores | Suportabilidade | Os parâmetros de acionamento dos motores e de redução do giro nas curvas devem ficar centralizados e identificados, permitindo sua alteração sem modificar a lógica de comunicação, validação e controle de movimento. Esse ajuste pode exigir recompilar e gravar o firmware novamente; não é exigida uma interface de calibração durante a operação. |
 
-## Definições e pontos de integração
+### Requisito compartilhado com Interface e Vídeo
+
+O requisito abaixo depende de implementação e acordo com o subgrupo de Interface e Vídeo.
+
+| Código | Nome | Categoria | Descrição |
+| --- | --- | --- | --- |
+| RNF-FC-07 | Periodicidade das mensagens de controle | Desempenho | Enquanto houver uma sessão de controle ativa, a interface deve enviar o estado atual dos controles com intervalo máximo definido em PAR-FC-01, inclusive quando todos estiverem soltos. Ao mudar o estado de um controle, deve enviar uma atualização sem aguardar o próximo envio periódico. |
+
+<a id="parametros-provisorios"></a>
+
+## Parâmetros provisórios
+
+Os valores abaixo são metas da primeira versão. Ainda precisam ser validados no robô montado, com vídeo e controle funcionando juntos. Não representam resultados já obtidos nos testes.
+
+| Código | Parâmetro | Valor inicial | Validação e acordos necessários |
+| --- | --- | --- | --- |
+| PAR-FC-01 | Intervalo máximo entre envios periódicos do estado dos controles | 100 ms | **A acordar com Interface e Vídeo.** Confirmar a implementação dos envios periódicos e das atualizações quando os controles mudarem. |
+| PAR-FC-02 | Tempo limite sem receber mensagens válidas do controlador ativo | 300 ms | **A validar por Firmware e Comunicação e alinhar com Interface e Vídeo.** Verificar o comportamento com a periodicidade escolhida e com os atrasos observados nos testes. |
+| PAR-FC-03 | Prazo máximo para comandar a frenagem após falha | 50 ms | **A validar por Firmware e Comunicação.** Confirmar com Eletrônica quais sinais comandam a frenagem. Para timeout, contar desde o vencimento do limite; para desconexão ou mensagem inválida, desde sua detecção ou identificação. |
+| PAR-FC-04 | Tempo máximo entre o envio de um comando pela interface e a atualização das saídas dos motores, com vídeo ativo | 150 ms | **A acordar e testar com Interface e Vídeo.** Definir as configurações de vídeo, as condições de operação e o método de medição. |
+| PAR-FC-05 | Prazo máximo para atualizar o LED após aceitar ou encerrar uma sessão | 100 ms | **A validar por Firmware e Comunicação, com apoio de Eletrônica.** Confirmar o LED e o pino utilizados. |
+
+### Como os tempos se relacionam
+
+- A interface deve enviar o estado dos controles pelo menos a cada 100 ms, mesmo sem mudanças. Quando houver uma mudança, deve enviar uma atualização sem esperar o próximo envio periódico.
+- Se nenhuma nova mensagem válida chegar, o tempo limite vence 300 ms depois da última mensagem válida recebida. Se ainda não houver uma primeira mensagem válida, a contagem começa quando a sessão é aceita.
+- Depois do vencimento, o firmware tem até 50 ms para atualizar as saídas e comandar a frenagem. Portanto, nesse caso, o prazo total é de até 350 ms desde a última mensagem válida recebida, ou desde a aceitação da sessão quando nenhuma mensagem válida tiver chegado.
+- Se a desconexão for detectada antes do timeout, o firmware deve iniciar o procedimento de encerramento e comandar a frenagem dentro dos 50 ms previstos, sem esperar completar os 300 ms.
+- Para uma mensagem inválida do controlador ativo, o prazo de 50 ms começa quando ela é identificada como inválida.
+- Uma parada solicitada normalmente pela interface segue o limite de 150 ms entre o envio e a atualização das saídas, com vídeo ativo. Os 50 ms de reação à falha não são somados a esse prazo.
+- O prazo de 100 ms do LED começa quando a sessão é aceita ou encerrada, e não necessariamente no instante em que o sinal de rede é perdido.
+- Esses tempos terminam na atualização das saídas do firmware. O robô ainda pode levar um tempo adicional para parar fisicamente, dependendo da velocidade, do piso, da carga e do circuito dos motores.
+
+Os valores são limites de resposta, não pausas que devem ser inseridas no programa. O firmware deve reagir assim que puder.
+
+### Revisão dos valores
+
+Os parâmetros poderão ser alterados após os testes. Cada alteração deve registrar o valor anterior, o novo valor e o motivo da mudança.
+
+Quando a alteração afetar a comunicação ou a integração, ela deve ser alinhada com os subgrupos envolvidos. Antes de aumentar um limite por causa de falhas nos testes, a equipe deve investigar a origem dos atrasos e avaliar o efeito da mudança no controle do robô.
+
+## Definições e integração
 
 ### Controlador ativo
 
-O controlador ativo é a conexão que recebeu a permissão exclusiva para controlar o robô. Ter uma sessão ativa não significa que o movimento já está desbloqueado.
+É a conexão à qual o firmware concedeu a sessão de controle. Estar conectado à rede Wi-Fi ou assistir ao vídeo não torna um dispositivo o controlador ativo.
 
-### Comunicação com a interface
-
-A interface deve enviar periodicamente o estado dos controles, inclusive quando todos estiverem soltos. Também deve informar mudanças nesse estado e descartar comandos acumulados durante uma interrupção.
-
-O formato das mensagens, a identificação das sessões, a frequência de envio e o tempo limite devem ser definidos em conjunto com Interface e Vídeo.
+Uma sessão pode estar ativa enquanto o movimento permanece bloqueado, aguardando a liberação dos controles. Nesse caso, o LED de conexão permanece aceso.
 
 ### Frenagem e inicialização
 
-A frenagem significa comandar o comportamento de frenagem previsto para o circuito dos motores, sem prometer que o robô pare instantaneamente.
+Neste documento, comandar a frenagem significa atualizar as saídas para o estado elétrico de frenagem acordado com Eletrônica. Isso não significa que o robô ficará fisicamente imóvel no mesmo instante.
 
-O acionamento correspondente e a condição dos motores enquanto a placa liga ou reinicia devem ser alinhados com Eletrônica. O RF-FC-01 descreve a atuação do firmware a partir de sua inicialização; a ausência de acionamentos indesejados antes desse momento depende também do circuito.
+O comportamento dos motores antes de o firmware configurar os pinos também precisa ser tratado com Eletrônica. O circuito deve impedir o acionamento involuntário durante a energização e a reinicialização da placa, até que o firmware estabeleça o estado de parada.
 
-### Ajuste dos movimentos
+### Movimentos e curvas
 
-Os parâmetros dos motores devem ser ajustados no robô montado. A redução do parâmetro de giro nas curvas não representa, por si só, uma redução proporcional da velocidade real de giro. Os testes devem incluir as mudanças entre curva em ré e giro no próprio eixo.
+Esquerda e direita são consideradas em relação ao próprio robô. Ao avançar em curva, a frente segue para o lado solicitado. Ao recuar em curva, a traseira segue para esse lado.
 
-O giro no próprio eixo foi escolhido para os comandos isolados de esquerda e direita. Essa interpretação dos movimentos pedidos no edital deve ser confirmada com a organização.
+A redução de giro nas curvas será um parâmetro de acionamento dos motores. Seu valor será definido durante a calibração. Uma redução no parâmetro não representa, necessariamente, a mesma redução na velocidade física de giro.
 
-### LEDs de indicação
+## Pendências e acordos entre subgrupos
 
-O LED do RF-FC-08 indica a existência de uma sessão de controle. Essa interpretação da indicação de conexão deve ser confirmada com a organização.
+| Assunto | O que precisa ser definido ou confirmado | Envolvidos |
+| --- | --- | --- |
+| Formato das mensagens | Campos obrigatórios, valores permitidos, tamanho máximo das mensagens e identificação da sessão de controle. | Firmware e Comunicação; Interface e Vídeo |
+| Periodicidade e timeout | Confirmar PAR-FC-01 e PAR-FC-02, incluindo o envio quando os controles mudarem e quando estiverem soltos. | Firmware e Comunicação; Interface e Vídeo |
+| Comandos de sessões encerradas | Definir como impedir o reaproveitamento de comandos anteriores ou gerados durante uma interrupção, conforme o RF-FC-20. | Firmware e Comunicação; Interface e Vídeo |
+| Comandos atrasados na mesma sessão | Definir como reconhecer comandos que ficaram antigos durante um atraso, qual atraso será aceitável e como tratá-los sem descartar informações necessárias à liberação dos controles. | Firmware e Comunicação; Interface e Vídeo |
+| Vídeo durante os testes | Definir resolução, taxa de quadros, condições da rede e método de medição para validar PAR-FC-04. | Firmware e Comunicação; Interface e Vídeo |
+| Inicialização elétrica | Confirmar como o circuito impedirá o acionamento involuntário dos motores antes de o firmware configurar as saídas no estado de parada. | Firmware e Comunicação; Eletrônica |
+| Comando elétrico de frenagem | Confirmar o driver utilizado e os sinais necessários para executar a frenagem, diferenciando-a do simples desligamento do acionamento. | Firmware e Comunicação; Eletrônica |
+| Parada física do robô | Medir tempo e distância de parada com velocidade, carga e piso definidos. Os limites aceitáveis ainda precisam ser acordados. | Firmware e Comunicação; Eletrônica; Mecânica |
+| Calibração dos motores | Definir os parâmetros de deslocamento, giro isolado e redução de giro nas curvas. | Firmware e Comunicação; Eletrônica; Mecânica |
+| LED de conexão | Confirmar LED, pino, montagem e visibilidade externa, além da diferenciação em relação ao LED de alimentação prevista no edital. | Firmware e Comunicação; Eletrônica |
+| Interpretação do indicador de conexão | Confirmar se indicar uma sessão de controle ativa atende à interpretação esperada para o LED de conexão exigido no edital. | Equipe; organização |
+| Interpretação dos giros | Confirmar se o giro no próprio eixo atende ao movimento para esquerda e direita esperado no edital. | Equipe; organização |
 
-Eletrônica deve garantir que o LED de conexão e o de alimentação tenham cores diferentes e sejam visíveis externamente, conforme o edital.
+### Mensagens inválidas e uso de memória
 
-### Escolhas da equipe e integração com vídeo
+Para verificar o RNF-FC-04, devem ser enviados exemplos de mensagens malformadas, incompletas, com valores não permitidos e acima do tamanho máximo acordado.
 
-Wi-Fi próprio, WebSocket, curvas, frenagem e exclusividade do controlador são decisões da equipe para este projeto.
+Os testes devem conferir se o firmware continua funcionando e se mantém o tratamento esperado para mensagens do controlador ativo e de outras conexões.
 
-A transmissão de vídeo pertence ao outro subgrupo, mas o controle e o vídeo devem ser integrados e testados funcionando ao mesmo tempo na ESP32-CAM.
+Também deve ser observado o uso de memória durante envios repetidos. Variações temporárias são diferentes de uma perda contínua de memória disponível. A quantidade, a frequência e a duração desses envios ainda precisam ser definidas.
 
+### Conexões simultâneas
+
+Devem ser realizadas tentativas simultâneas de assumir o controle para verificar o RF-FC-04.
+
+Apenas uma conexão deve receber o controle. As demais devem receber o aviso de indisponibilidade e não devem alterar os motores, renovar o tempo limite do controlador ativo ou desbloquear movimentos.
+
+### Inicialização, interrupção e retomada
+
+Os testes devem verificar se o robô permanece sem movimento ao ligar ou reiniciar a placa, inclusive com um controle mantido pressionado.
+
+Também devem verificar a perda de comunicação, o vencimento do timeout, o encerramento da sessão e a retomada por uma nova sessão.
+
+Após a interrupção, o movimento só deve ser permitido depois da confirmação de controles soltos e de um novo acionamento. Comandos da sessão encerrada não devem provocar movimento.
