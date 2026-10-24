@@ -118,24 +118,4 @@ A redução de giro nas curvas será um parâmetro de acionamento dos motores. S
 | Interpretação do indicador de conexão | Confirmar se indicar uma sessão de controle ativa atende à interpretação esperada para o LED de conexão exigido no edital. | Equipe; organização |
 | Interpretação dos giros | Confirmar se o giro no próprio eixo atende ao movimento para esquerda e direita esperado no edital. | Equipe; organização |
 
-### Mensagens inválidas e uso de memória
 
-Para verificar o RNF-FC-04, devem ser enviados exemplos de mensagens malformadas, incompletas, com valores não permitidos e acima do tamanho máximo acordado.
-
-Os testes devem conferir se o firmware continua funcionando e se mantém o tratamento esperado para mensagens do controlador ativo e de outras conexões.
-
-Também deve ser observado o uso de memória durante envios repetidos. Variações temporárias são diferentes de uma perda contínua de memória disponível. A quantidade, a frequência e a duração desses envios ainda precisam ser definidas.
-
-### Conexões simultâneas
-
-Devem ser realizadas tentativas simultâneas de assumir o controle para verificar o RF-FC-04.
-
-Apenas uma conexão deve receber o controle. As demais devem receber o aviso de indisponibilidade e não devem alterar os motores, renovar o tempo limite do controlador ativo ou desbloquear movimentos.
-
-### Inicialização, interrupção e retomada
-
-Os testes devem verificar se o robô permanece sem movimento ao ligar ou reiniciar a placa, inclusive com um controle mantido pressionado.
-
-Também devem verificar a perda de comunicação, o vencimento do timeout, o encerramento da sessão e a retomada por uma nova sessão.
-
-Após a interrupção, o movimento só deve ser permitido depois da confirmação de controles soltos e de um novo acionamento. Comandos da sessão encerrada não devem provocar movimento.
