@@ -8,3 +8,9 @@
 | **Gerenciamento do controle** | Definir qual conexão pode controlar o robô, controlar o bloqueio e a liberação dos movimentos e encerrar a sessão quando houver desconexão ou ausência de mensagens válidas dentro do tempo limite. |
 | **Lógica de movimento** | Decidir entre deslocamento, giro, curva e frenagem, respeitando as permissões, os controles recebidos e as condições de falha informadas pelas outras partes. |
 | **Acionamento dos motores** | Transformar a mensagem deita pela lógica de movimento em sinais, feita pela ESP32-CAM, para a ponte H, que acionará os motores. |
+
+## Estados de controle
+
+O diagrama abaixo mostra como o firmware gerencia a sessão de controle e a permissão para movimentar o robô, desde a inicialização até a desconexão ou perda de comunicação.
+
+![Diagrama dos estados de controle do robô](imagens/estados-controle.png)
