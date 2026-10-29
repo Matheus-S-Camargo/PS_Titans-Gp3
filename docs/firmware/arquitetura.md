@@ -14,3 +14,4 @@
 O diagrama abaixo mostra como o firmware gerencia a sessão de controle e a permissão para movimentar o robô, desde a inicialização até a desconexão ou perda de comunicação.
 
 ![Diagrama dos estados de controle do robô](imagens/estados-controle.png)
+
