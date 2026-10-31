@@ -1,39 +1,70 @@
 .App {
-  display: flex;             
-  flex-direction: column;   
-  align-items: center;      
-  
-  width: 100%;             
-  max-width: 100%;
-  margin: 0 auto;            
-  
-  padding-top: 30px;         
-  min-height: 100vh;         
-  background-color: #030303f0; 
-  box-sizing: border-box;
+  text-align: center;
+  padding: 20px;
+  background-color: #000000;
 }
 
+.display {
+  width: 640px;
+  height: 360px;
+  max-width: 100%;
+  margin: 0 auto 20px;
+  background: #000000;
+  border: 5px solid #d0830f;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-.App-logo {
-  height: 40vmin;
+.painel-setas {
+  display: grid;
+  grid-template-columns: repeat(3, 60px);
+  gap: 15px;
+  width: fit-content;
+  margin: 10px auto;
+}
+
+.seta-vazia {
+  width: 30px;
+  height: 30px;
+}
+
+.seta {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  touch-action: none;
+  user-select: none;
+  transition: transform 0.1s ease, background-color 0.1s ease;
+}
+
+.seta img {
+  width: 25px;
+  height: 25px;
+  filter: invert(1);
+  transition: transform 0.2s ease;
   pointer-events: none;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.seta--ativa {
+  background: #c72612;
+  transform: scale(0.92);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.App-link {
-  color: #61dafb;
+.seta--ativa img {
+  filter: none;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.seta:focus-visible {
+  outline: 2px solid #d0830f;
+  outline-offset: 2px;
 }
