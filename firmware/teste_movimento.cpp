@@ -23,16 +23,24 @@ bool repouso(Movimento ditocujo){
     return false;
 }
 
-
+int intensidade (int eixo){
+    int eixosemsinal = eixo;
+    if (eixo < 0) {
+        eixosemsinal = -eixo;
+    }
+    if (eixosemsinal <= 5) return 0;
+    return (eixosemsinal - 5) * 100 / 95;
+}
 
 int main(){
     Movimento tras = {-100, 0};
     Movimento direita = {0, 100};
     Movimento descanso = {0, 0};
-    Movimento horizontalInvalido = {0, 101};
+    Movimento horizontalInvalido = {0, 101};/*
     Movimento verticalInvalido = {-101, 0};
     Movimento limiteRepouso = {5, -5};
-    Movimento foraRepouso = {6, 0};
+    Movimento foraRepouso = {6, 0};*/
+    Movimento recebido = tras;
     bool bloqueado = true;
 
     if (validade(tras) and repouso(tras)){
@@ -50,10 +58,28 @@ int main(){
     if (validade(descanso) and repouso(descanso)){
         bloqueado = false;
     }
-    std::printf("descanso: %d\n", bloqueado);
-        if (validade(descanso) and repouso(descanso)){
-        bloqueado = false;
+    if (validade(recebido) and recebido.vertical < -5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and bloqueado == 0){
+        std::printf("RECUAR: %d%%\n", intensidade(recebido.vertical));
+    } else if (validade(recebido) and recebido.vertical > 5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and !bloqueado){
+        std::printf("AVANÇAR: %d%%\n", intensidade(recebido.vertical));
+    } else if (validade(recebido) and recebido.vertical <= 5 and recebido.vertical >= -5 and recebido.horizontal > 5 and !bloqueado){
+        std::printf("GIRAR DIREITA: %d%%\n", intensidade(recebido.horizontal));
+    } else if (validade(recebido) and recebido.vertical <= 5 and recebido.vertical >= -5 and recebido.horizontal < -5 and !bloqueado){
+        std::printf("GIRAR ESQUERDA: %d%%\n", intensidade(recebido.horizontal));
+    } else if(validade(recebido) and repouso(recebido)){
+        std::printf("FREAR\n");
+    } else if(validade(recebido) and recebido.vertical > 5 and recebido.horizontal > 5 and !bloqueado){
+        std::printf("CURVA FRENTE: %d%% DIREITA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
+    } else if(validade(recebido) and recebido.vertical < -5 and recebido.horizontal > 5 and !bloqueado){
+        std::printf("CURVA FRENTE: %d%% ESQUERDA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
+    } else if(validade(recebido) and recebido.vertical > 5 and recebido.horizontal < -5 and !bloqueado){
+        std::printf("CURVA TRAS: %d%% DIREITA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
+    } else if(validade(recebido) and recebido.vertical < -5 and recebido.horizontal < -5 and !bloqueado){
+        std::printf("CURVA TRAS: %d%% ESQUERDA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
     }
+
+    /*
+    std::printf("descanso: %d\n", bloqueado);
     std::printf("tras: %d\n", bloqueado);
     std::printf("Vertical: %d, Horizontal: %d\n", direita.vertical, direita.horizontal);
     std::printf("direita: %d\n", validade(direita));
@@ -62,8 +88,13 @@ int main(){
     std::printf("HorizontalInválido: %d\n", validade(horizontalInvalido));
     std::printf("VerticalInválido: %d\n", validade(verticalInvalido));
     std::printf("No limite: %d\n", repouso(limiteRepouso));
-    std::printf("Fora do limite: %d\n", repouso(foraRepouso));
-
+    std::printf("Fora do limite: %d\n", repouso(foraRepouso));*/
+    recebido = {50, 3};
+    if (validade(recebido) and recebido.vertical < -5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and bloqueado == 0){
+        std::printf("RECUAR\n");
+    } else if (validade(recebido) and recebido.vertical > 5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and !bloqueado){
+        std:printf("AVANCAR\n");
+    }
     return 0;
 
 }
