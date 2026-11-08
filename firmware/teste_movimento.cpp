@@ -5,96 +5,148 @@ struct Movimento {
     int horizontal;
 };
 
-bool validade(Movimento ditocujo){
-    if (ditocujo.vertical >= -100 and ditocujo.vertical <= 100){
-        if (ditocujo.horizontal >= -100 and ditocujo.horizontal <= 100){
+enum Movimentos {
+    PARAR,
+    AVANCAR,
+    RE,
+    GIRAR_DIREITA,
+    GIRAR_ESQUERDA,
+    CURVA_FRENTE_DIREITA,
+    CURVA_FRENTE_ESQUERDA,
+    CURVA_TRAS_DIREITA,
+    CURVA_TRAS_ESQUERDA,
+    COMANDO_INVALIDO,
+    CONTROLE_BLOQUEADO
+};
+
+struct Decisao {
+    Movimentos tipo;
+    int intensidadeVertical;
+    int intensidadeHorizontal;
+};
+
+bool validade(Movimento ditocujo) {
+    if (ditocujo.vertical >= -100 and ditocujo.vertical <= 100) {
+        if (ditocujo.horizontal >= -100 and ditocujo.horizontal <= 100) {
             return true;
         }
     }
     return false;
 }
 
-bool repouso(Movimento ditocujo){
-    if (ditocujo.vertical >= -5 and ditocujo.vertical <= 5){
-        if (ditocujo.horizontal >= -5 and ditocujo.horizontal <= 5){
+bool repouso(Movimento ditocujo) {
+    if (ditocujo.vertical >= -5 and ditocujo.vertical <= 5) {
+        if (ditocujo.horizontal >= -5 and ditocujo.horizontal <= 5) {
             return true;
         }
     }
     return false;
 }
 
-int intensidade (int eixo){
+int intensidade(int eixo) {
     int eixosemsinal = eixo;
+
     if (eixo < 0) {
         eixosemsinal = -eixo;
     }
+
     if (eixosemsinal <= 5) return 0;
+
     return (eixosemsinal - 5) * 100 / 95;
 }
 
-int main(){
-    Movimento tras = {-100, 0};
-    Movimento direita = {0, 100};
-    Movimento descanso = {0, 0};
-    Movimento horizontalInvalido = {0, 101};/*
-    Movimento verticalInvalido = {-101, 0};
-    Movimento limiteRepouso = {5, -5};
-    Movimento foraRepouso = {6, 0};*/
-    Movimento recebido = tras;
+
+Decisao interpretarMovimento(Movimento recebido, bool &bloqueado) {
+    Decisao resultado = {PARAR, 0, 0};
+
+    if (!validade(recebido)) {
+        resultado.tipo = COMANDO_INVALIDO;
+    }
+    else if (bloqueado) {
+        if (repouso(recebido)) {
+            bloqueado = false;
+        } else {
+            resultado.tipo = CONTROLE_BLOQUEADO;
+        }
+    }
+    else {
+        if (repouso(recebido)) {
+            resultado.tipo = PARAR;
+        }
+        // Movimentos simples
+        else if (recebido.vertical > 5 &&
+                 recebido.horizontal >= -5 && recebido.horizontal <= 5) {
+            resultado.tipo = AVANCAR;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+        }
+        else if (recebido.vertical < -5 &&
+                 recebido.horizontal >= -5 && recebido.horizontal <= 5) {
+            resultado.tipo = RE;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+        }
+        else if (recebido.horizontal > 5 &&
+                 recebido.vertical >= -5 && recebido.vertical <= 5) {
+            resultado.tipo = GIRAR_DIREITA;
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+        else if (recebido.horizontal < -5 &&
+                 recebido.vertical >= -5 && recebido.vertical <= 5) {
+            resultado.tipo = GIRAR_ESQUERDA;
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+        // Diagonais
+        else if (recebido.vertical > 5 && recebido.horizontal > 5) {
+            resultado.tipo = CURVA_FRENTE_DIREITA;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+        else if (recebido.vertical > 5 && recebido.horizontal < -5) {
+            resultado.tipo = CURVA_FRENTE_ESQUERDA;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+        else if (recebido.vertical < -5 && recebido.horizontal > 5) {
+            resultado.tipo = CURVA_TRAS_DIREITA;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+        else if (recebido.vertical < -5 && recebido.horizontal < -5) {
+            resultado.tipo = CURVA_TRAS_ESQUERDA;
+            resultado.intensidadeVertical = intensidade(recebido.vertical);
+            resultado.intensidadeHorizontal = intensidade(recebido.horizontal);
+        }
+    }
+
+    return resultado;
+}
+
+void testarMovimento(Movimento recebido, bool &bloqueado) {
+    Decisao resultado = interpretarMovimento(recebido, bloqueado);
+
+    std::printf(
+        "Entrada: V=%d H=%d | Tipo=%d | Intensidade V=%d%% H=%d%% | Bloqueado=%d\n",
+        recebido.vertical,
+        recebido.horizontal,
+        resultado.tipo,
+        resultado.intensidadeVertical,
+        resultado.intensidadeHorizontal,
+        bloqueado
+    );
+}
+
+int main() {
     bool bloqueado = true;
 
-    if (validade(tras) and repouso(tras)){
-        bloqueado = false;
-    }
-    std::printf("tras: %d\n", bloqueado);
-    if (validade(direita) and repouso(direita)){
-        bloqueado = false;
-    }
-    std::printf("direita: %d\n", bloqueado);
-    if(validade(horizontalInvalido) and repouso(horizontalInvalido)){
-        bloqueado = false;
-    }
-    std::printf("horizontalinválido: %d\n", bloqueado);
-    if (validade(descanso) and repouso(descanso)){
-        bloqueado = false;
-    }
-    if (validade(recebido) and recebido.vertical < -5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and bloqueado == 0){
-        std::printf("RECUAR: %d%%\n", intensidade(recebido.vertical));
-    } else if (validade(recebido) and recebido.vertical > 5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and !bloqueado){
-        std::printf("AVANÇAR: %d%%\n", intensidade(recebido.vertical));
-    } else if (validade(recebido) and recebido.vertical <= 5 and recebido.vertical >= -5 and recebido.horizontal > 5 and !bloqueado){
-        std::printf("GIRAR DIREITA: %d%%\n", intensidade(recebido.horizontal));
-    } else if (validade(recebido) and recebido.vertical <= 5 and recebido.vertical >= -5 and recebido.horizontal < -5 and !bloqueado){
-        std::printf("GIRAR ESQUERDA: %d%%\n", intensidade(recebido.horizontal));
-    } else if(validade(recebido) and repouso(recebido)){
-        std::printf("FREAR\n");
-    } else if(validade(recebido) and recebido.vertical > 5 and recebido.horizontal > 5 and !bloqueado){
-        std::printf("CURVA FRENTE: %d%% DIREITA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
-    } else if(validade(recebido) and recebido.vertical < -5 and recebido.horizontal > 5 and !bloqueado){
-        std::printf("CURVA FRENTE: %d%% ESQUERDA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
-    } else if(validade(recebido) and recebido.vertical > 5 and recebido.horizontal < -5 and !bloqueado){
-        std::printf("CURVA TRAS: %d%% DIREITA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
-    } else if(validade(recebido) and recebido.vertical < -5 and recebido.horizontal < -5 and !bloqueado){
-        std::printf("CURVA TRAS: %d%% ESQUERDA: %d%%\n", intensidade(recebido.vertical), intensidade(recebido.horizontal));
-    }
+    testarMovimento({50, 0}, bloqueado);
+    testarMovimento({0, 0}, bloqueado);
 
-    /*
-    std::printf("descanso: %d\n", bloqueado);
-    std::printf("tras: %d\n", bloqueado);
-    std::printf("Vertical: %d, Horizontal: %d\n", direita.vertical, direita.horizontal);
-    std::printf("direita: %d\n", validade(direita));
-    std::printf("Vertical: %d, Horizontal: %d\n", descanso.vertical, descanso.horizontal);
-    std::printf("descanso: %d\n", validade(descanso));
-    std::printf("HorizontalInválido: %d\n", validade(horizontalInvalido));
-    std::printf("VerticalInválido: %d\n", validade(verticalInvalido));
-    std::printf("No limite: %d\n", repouso(limiteRepouso));
-    std::printf("Fora do limite: %d\n", repouso(foraRepouso));*/
-    recebido = {50, 3};
-    if (validade(recebido) and recebido.vertical < -5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and bloqueado == 0){
-        std::printf("RECUAR\n");
-    } else if (validade(recebido) and recebido.vertical > 5 and recebido.horizontal <= 5 and recebido.horizontal >= -5 and !bloqueado){
-        std:printf("AVANCAR\n");
-    }
+    testarMovimento({50, 0}, bloqueado);
+    testarMovimento({-50, 0}, bloqueado);
+    testarMovimento({0, 70}, bloqueado);
+    testarMovimento({50, -30}, bloqueado);
+    testarMovimento({-50, 30}, bloqueado);
+
+    testarMovimento({101, 0}, bloqueado);
+
     return 0;
-
 }
