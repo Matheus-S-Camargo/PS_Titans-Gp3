@@ -7,7 +7,7 @@ Projeto do processo trainee da equipe de robótica Titans (UnB Gama, PS 2026/2):
 ## Datas
 
 * 26/10: ponto de controle 1
-* 23/11: ponto de controle 2
+* 26/11: ponto de controle 2
 * 04/12: entrega do relatório final
 * 05/12, 10h: competição final (Praça Solar, FCTE)
 
