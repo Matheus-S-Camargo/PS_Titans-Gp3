@@ -4,6 +4,9 @@ const cors = require('cors');
 const PORT = process.env.PORT || 3001;
 const ORIGEM_PERMITIDA = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const ROTA = '/endpoint-de-comando';
+const TEMPO_LIMITE_MS = Number(process.env.TEMPO_LIMITE_MS) || 1000;
+
+const PARADO = 'parado';
 
 const DIRECOES_VALIDAS = new Set([
   'norte',
@@ -14,6 +17,7 @@ const DIRECOES_VALIDAS = new Set([
   'noroeste',
   'sudeste',
   'sudoeste',
+  PARADO,
 ]);
 
 const app = express();
@@ -21,61 +25,64 @@ const app = express();
 app.use(cors({ origin: ORIGEM_PERMITIDA }));
 app.use(express.json({ limit: '1kb' }));
 
-// Guarda o último comando recebido
-let ultimoComando = null;
+let ultimoComando = PARADO;
+let watchdog = null;
 
-// Consulta o último comando
-app.get(ROTA, (req, res) => {
-  if (!ultimoComando) {
-    return res.json({
-      comando: 'parado',
-      timestamp: null,
-      mensagem: 'Nenhum comando recebido ainda',
-    });
+function enviarParaDispositivo(comando) {
+  // TODO: aqui entra o envio do comando para o dispositivo/robô
+}
+
+function aplicarComando(comando) {
+  ultimoComando = comando;
+
+  enviarParaDispositivo(comando);
+
+  clearTimeout(watchdog);
+  if (comando !== PARADO) {
+    watchdog = setTimeout(() => {
+      aplicarComando(PARADO);
+    }, TEMPO_LIMITE_MS);
   }
+}
 
-  res.json(ultimoComando);
+function responder(res, status = 200) {
+  return res.status(status).json({ Comando: ultimoComando });
+}
+
+app.get(ROTA, (req, res) => {
+  responder(res);
 });
 
-// Recebe um novo comando
 app.post(ROTA, (req, res) => {
-  const { comando, timestamp } = req.body ?? {};
+  const body = req.body ?? {};
+  const comando = body.Comando ?? body.comando;
+
+  if (comando === undefined || comando === null || comando === '') {
+    aplicarComando(PARADO);
+    return responder(res);
+  }
 
   if (!DIRECOES_VALIDAS.has(comando)) {
-    return res.status(400).json({
-      sucesso: false,
-      mensagem: `Comando inválido. Use um destes: ${[...DIRECOES_VALIDAS].join(', ')}`,
-    });
+    aplicarComando(PARADO);
+    return responder(res, 400);
   }
 
-  ultimoComando = {
-    comando,
-    timestamp: timestamp ?? null,
-    recebidoEm: new Date().toISOString(),
-  };
-
-  console.log(`➡️ Comando recebido: ${comando} (em ${timestamp ?? 'sem timestamp'})`);
-
-  // TODO: aqui entra o envio do comando para o dispositivo/robô
-
-  res.status(200).json({
-    sucesso: true,
-    mensagem: `Comando '${comando}' recebido`,
-  });
+  aplicarComando(comando);
+  console.log(`Comando recebido: ${comando}`);
+  responder(res);
 });
 
-// Rota inexistente
 app.use((req, res) => {
-  res.status(404).json({ sucesso: false, mensagem: 'Rota não encontrada' });
+  res.sendStatus(404);
 });
 
-// Erros gerais (inclui JSON malformado)
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ sucesso: false, mensagem: 'JSON inválido' });
+    aplicarComando(PARADO);
+    return responder(res, 400);
   }
-  console.error('❌ Erro:', err);
-  res.status(500).json({ sucesso: false, mensagem: 'Erro interno do servidor' });
+  console.error('Erro:', err);
+  res.sendStatus(500);
 });
 
 app.listen(PORT, () => {
