@@ -13,6 +13,9 @@ AsyncWebServer servidorHttp(80);
 AsyncWebSocket websocket("/ws");
 
 constexpr uint32_t SEM_CONTROLADOR = 0;
+constexpr uint32_t ATIVAR_FREIOS = 300;
+constexpr uint32_t TEMPO_MAX_DESCONECTAR = 5000; //*Ainda pode mudar o tempo
+
 std::atomic<uint32_t> idControlador{SEM_CONTROLADOR};
 std::atomic<uint32_t> ultimaMensagemValidaMs{0};
 std::atomic<int> comandoVertical{0};
@@ -170,5 +173,34 @@ void setup() {
 
 void loop() {
     websocket.cleanupClients();
+
+    const uint32_t controladorAtual = idControlador.load();
+
+    if (controladorAtual != ATIVAR_FREIOS) {
+        const uint32_t tempoSemSinal = millis() - ultimaMensagemValidaMs.load();
+        
+        if (tempoSemSinal > TEMPO_MAX_DESCONECTAR) {
+            uint32_t idEsperado = controladorAtual;
+
+            if (idControlador.compare_exchange_strong(idEsperado, SEM_CONTROLADOR)) {
+                joystickBloqueado = true;
+                pararComandoDeMovimento();
+                Serial.printf("Controlador #%u desconectado por inatividade\n", controladorAtual);
+            }
+
+            AsyncWebSocketClient *cliente = websocket.client(controladorAtual);
+            if (cliente != nullptr) {
+                cliente->close(1001, "timeout");
+            }
+        } else if (tempoSemSinal > TEMPO_MAX_DESCONECTAR) {
+            pararComandoDeMovimento();
+        } 
+    } else {
+        pararComandoDeMovimento();
+    }
+
+    //Tem que colocar a função da ponte H aqui
+    //Faltam colocar as funções dos LED também 
+
     delay(10);
 }
