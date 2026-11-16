@@ -1,31 +1,53 @@
 import { useCallback, useState } from 'react';
 import './App.css';
-import Display from './components/Display';
-import PainelSetas from './components/PainelSetas';
-import { useGamepad } from './hooks/Usegamepad';
-import { enviarComando } from './services/api';
+import { PING_ESP_MS, PING_SERVIDOR_MS } from 'constants';
+import { consultarServidor, pingEsp } from './services/robotService';
+import useConfig from './hooks/useConfig';
+import usePing from './hooks/usePing';
+import useRobotControl from './hooks/useRobotControl';
+import useKeyboard from './hooks/useKeyboard';
+import useGamepad from './hooks/useGamepad';
+import StatusBar from './components/StatusBar';
+import CameraView from './components/CameraView';
+import DirectionPad from './components/DirectionPad';
+import SettingsModal from './components/SettingsModal';
 
 export default function App() {
-  const [direcaoAtiva, setDirecaoAtiva] = useState(null);
+  const { cfg, salvar } = useConfig();
+  const [configAberta, setConfigAberta] = useState(false);
 
-  // Usado pelo mouse/toque e pelo controle
-  const definirDirecao = useCallback((direcao) => {
-    setDirecaoAtiva(direcao);
-    if (direcao) enviarComando(direcao);
-  }, []);
+  const { ativo, comandoAtual, delayCmd, pressionar, soltar, soltarAtivo, sincronizar } =
+    useRobotControl(cfg.api);
+  useKeyboard(pressionar, soltar, soltarAtivo);
+  useGamepad(pressionar, soltar, soltarAtivo);
 
-  const soltar = useCallback(() => setDirecaoAtiva(null), []);
+  const checarServidor = useCallback(() => consultarServidor(cfg.api), [cfg.api]);
+  const checarEsp = useCallback(() => pingEsp(cfg.esp), [cfg.esp]);
 
-  useGamepad(definirDirecao);
+  const servidor = usePing(checarServidor, PING_SERVIDOR_MS, (r) => sincronizar(r.comando));
+  const esp = usePing(cfg.esp ? checarEsp : null, PING_ESP_MS);
 
   return (
-    <div className="App">
-      <Display />
-      <PainelSetas
-        direcaoAtiva={direcaoAtiva}
-        onPressionar={definirDirecao}
-        onSoltar={soltar}
+    <div className="cr">
+      <StatusBar
+        servidor={servidor}
+        esp={esp}
+        delayCmd={delayCmd}
+        onConfig={() => setConfigAberta(true)}
       />
+      <CameraView url={cfg.cam} comando={comandoAtual} />
+      <DirectionPad ativo={ativo} pressionar={pressionar} soltar={soltar} />
+      
+      {configAberta && (
+        <SettingsModal
+          cfg={cfg}
+          onSalvar={(nova) => {
+            salvar(nova);
+            setConfigAberta(false);
+          }}
+          onFechar={() => setConfigAberta(false)}
+        />
+      )}
     </div>
   );
 }
