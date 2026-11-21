@@ -14,7 +14,6 @@ AsyncWebSocket websocket("/ws");
 
 constexpr uint32_t SEM_CONTROLADOR = 0;
 constexpr uint32_t ATIVAR_FREIOS = 300;
-constexpr uint32_t TEMPO_MAX_DESCONECTAR = 5000; //*Ainda pode mudar o tempo
 
 std::atomic<uint32_t> idControlador{SEM_CONTROLADOR};
 std::atomic<uint32_t> ultimaMensagemValidaMs{0};
@@ -157,14 +156,11 @@ void tratarEventoWebSocket(
 void setup() {
     Serial.begin(115200);
 
-    WiFi.begin(nomeRede, senhaRede);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(100);
-        Serial.print(".");
-    }
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(nomeRede, senhaRede);
 
     Serial.print("\nIP: ");
-    Serial.println(WiFi.localIP());
+    Serial.println(WiFi.softAPIP());
 
     websocket.onEvent(tratarEventoWebSocket);
     servidorHttp.addHandler(&websocket);
@@ -176,10 +172,10 @@ void loop() {
 
     const uint32_t controladorAtual = idControlador.load();
 
-    if (controladorAtual != ATIVAR_FREIOS) {
+    if (controladorAtual != SEM_CONTROLADOR) {
         const uint32_t tempoSemSinal = millis() - ultimaMensagemValidaMs.load();
         
-        if (tempoSemSinal > TEMPO_MAX_DESCONECTAR) {
+        if (tempoSemSinal > ATIVAR_FREIOS) {
             uint32_t idEsperado = controladorAtual;
 
             if (idControlador.compare_exchange_strong(idEsperado, SEM_CONTROLADOR)) {
@@ -192,9 +188,8 @@ void loop() {
             if (cliente != nullptr) {
                 cliente->close(1001, "timeout");
             }
-        } else if (tempoSemSinal > TEMPO_MAX_DESCONECTAR) {
-            pararComandoDeMovimento();
-        } 
+        }
+
     } else {
         pararComandoDeMovimento();
     }
