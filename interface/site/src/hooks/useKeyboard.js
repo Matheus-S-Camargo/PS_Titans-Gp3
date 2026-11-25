@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { TECLAS } from './constants';
+import { TECLAS } from '../constants';
 
 const direcao = (k) => TECLAS[k.length === 1 ? k.toLowerCase() : k];
 

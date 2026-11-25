@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import './App.css';
-import { PING_ESP_MS, PING_SERVIDOR_MS } from 'constants';
+import { PING_ESP_MS, PING_SERVIDOR_MS } from './constants';
 import { consultarServidor, pingEsp } from './services/robotService';
 import useConfig from './hooks/useConfig';
 import usePing from './hooks/usePing';
@@ -17,7 +17,7 @@ export default function App() {
   const [configAberta, setConfigAberta] = useState(false);
 
   const { ativo, comandoAtual, delayCmd, pressionar, soltar, soltarAtivo, sincronizar } =
-    useRobotControl(cfg.api);
+    useRobotControl(cfg.ws);
   useKeyboard(pressionar, soltar, soltarAtivo);
   useGamepad(pressionar, soltar, soltarAtivo);
 
@@ -37,7 +37,7 @@ export default function App() {
       />
       <CameraView url={cfg.cam} comando={comandoAtual} />
       <DirectionPad ativo={ativo} pressionar={pressionar} soltar={soltar} />
-      
+
       {configAberta && (
         <SettingsModal
           cfg={cfg}
